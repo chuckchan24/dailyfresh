@@ -1,6 +1,9 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+from Daily_Fresh import settings
 from utils.models import BaseModel
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 
 class TestModel(BaseModel):
@@ -16,6 +19,15 @@ class User(BaseModel, AbstractUser):
         # 指定表名
         db_table = 'df_user'
 
+    def generate_active_token(self):
+        """对字典数据{'confirm':用户id}加密，返回加密后的结果"""
+        # 使用Serialize()生成序列化器，传入password and expire time
+        serializer = Serializer(settings.SECRET_KEY, 3600)
+        # dumps()生成user_id加密后的token, 传入封装user_id的字典
+        token = serializer.dumps({'confirm': self.id})
+        # 返回token byte解码成字符串
+        return token.decode()
+
 
 class Address(BaseModel):
     """用户地址"""
@@ -28,4 +40,3 @@ class Address(BaseModel):
 
     class Meta:
         db_table = "df_address"
-
