@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse
 import re
 from apps.users.models import User
@@ -7,6 +7,8 @@ from Daily_Fresh import settings
 from django.core.mail import send_mail
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from celery_tasks import tasks
+from django.contrib.auth import authenticate, login, logout
+from django.core.urlresolvers import reverse
 
 
 class RegisterView(View):
@@ -30,19 +32,19 @@ class RegisterView(View):
         # 逻辑判断 0 0.0 '' None [] () {}  -> False
         # all: 所有的变量都为True, all函数才返回True, 否则返回False
         if not all([username, password, password_confirm, email]):
-            return render(request, 'register.html', {'message': '参数不完整'})
+            return render(request, 'register.html', {'errmsg': '参数不完整'})
 
         # 判断两次输入的密码是否正确
         if password != password_confirm:
-            return render(request, 'register.html', {'message': '两次输入的密码不一致'})
+            return render(request, 'register.html', {'errmsg': '两次输入的密码不一致'})
 
         # 判断是否勾选了用户协议
         if allow != 'on':
-            return render(request, 'register.html', {'message': '请先同意用户协议'})
+            return render(request, 'register.html', {'errmsg': '请先同意用户协议'})
 
         # 判断邮箱格式是否正确
         if not re.match('^[a-z0-9][\w.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$', email):
-            return render(request, 'register.html', {'message': '邮箱格式不正确'})
+            return render(request, 'register.html', {'errmsg': '邮箱格式不正确'})
 
         # 保存用户注册信息
         # create_user: 是django提供的方法, 会对密码进行加密后再保存到数据库
@@ -55,7 +57,7 @@ class RegisterView(View):
             user.save()
         except IntegrityError as e:  # IntegrityError:
             print(e)
-            return render(request, 'register.html', {'message': '用户名已存在'})
+            return render(request, 'register.html', {'errmsg': '用户名已存在'})
 
         # 发送激活邮件
         # 获取token对象
@@ -66,7 +68,7 @@ class RegisterView(View):
         # 会保存方法名到redis数据库
         tasks.send_active_email.delay(username, email, token)
 
-        return HttpResponse('进入登录界面')
+        return redirect(reverse('users:login'))
 
     @staticmethod
     def send_active_email(username, email, token):
@@ -111,4 +113,56 @@ class ActiveView(View):
         User.objects.filter(id=user_id).update(is_active=True)
 
         # 激活成功进入登录界面
-        return HttpResponse('激活成功,进入登录界面')
+        return redirect(reverse('users:login'))
+
+
+class LoginView(View):
+    """登录类视图"""
+
+    def get(self, request):
+        """进入登录界面"""
+        return render(request, 'login.html')
+
+    def post(self, request):
+        """处理登录逻辑，重定向到index"""
+
+        # 获取用户登录的用户名，密码等参数
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        remember = request.POST.get('remember')
+
+        # 检验参数的合法性
+        if not all([username, password]):
+            return render(request, 'login.html', {'errmsg': '请输入用户名和密码'})
+
+        # 通过django提供的authenticate方法
+        # 验证用户的用户名和密码是否正确匹配
+        user = authenticate(username=username, password=password)
+
+        if user is None:
+            return render(request, 'login.html', {'errmsg': '用户名或密码不正确'})
+        if not user.is_active:
+            return render(request, 'login.html', {'errmsg': '请先激活账号'})
+
+        # session保存用户登录状态
+        # request.session['_auth_user_id'] = user.id
+        # 通过django提供的login方法，保持用户的登录状态(使用session)
+        login(request, user)
+
+        if remember == 'on':
+            # 保持登录状态两周(None会保存两周)
+            request.session.set_expiry(None)
+
+        # 响应请求，进入首页
+        return redirect(reverse('goods:index'))
+
+
+class LogoutView(View):
+
+    def get(self, request):
+        """注销登录"""
+        # 调用django的logout方法，实现退出，并删除用户session的cookie
+        # request参数中有user对象
+        logout(request)
+
+        return redirect(reverse('goods:index'))
