@@ -9,6 +9,7 @@ from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from celery_tasks import tasks
 from django.contrib.auth import authenticate, login, logout
 from django.core.urlresolvers import reverse
+from utils.common import LoginRequiredMixin
 
 
 class RegisterView(View):
@@ -128,7 +129,7 @@ class LoginView(View):
 
         # 获取用户登录的用户名，密码等参数
         username = request.POST.get('username')
-        password = request.POST.get('password')
+        password = requestiddleware.csrf.CsrfViewMiddlewa.POST.get('password')
         remember = request.POST.get('remember')
 
         # 检验参数的合法性
@@ -153,8 +154,13 @@ class LoginView(View):
             # 保持登录状态两周(None会保存两周)
             request.session.set_expiry(None)
 
-        # 响应请求，进入首页
-        return redirect(reverse('goods:index'))
+        next = request.GET.get('next')
+        if next is None:
+            # 如果是login界面直接登陆进来的，就重定向到首页
+            return redirect(reverse('goods:index'))
+        else:
+            # 如果是用户中心重定向到登陆页面登录进来的，就回到用户中心
+            return redirect(next)
 
 
 class LogoutView(View):
@@ -166,3 +172,27 @@ class LogoutView(View):
         logout(request)
 
         return redirect(reverse('goods:index'))
+
+
+class UserInfoView(LoginRequiredMixin, View):
+    """用户中心主界面"""
+
+    def get(self, request):
+        context = {'which_page': 1}
+        return render(request, 'user_center_info.html', context)
+
+
+class UserOrderView(LoginRequiredMixin, View):
+    """用户中心订单界面"""
+
+    def get(self, request):
+        context = {'which_page': 2}
+        return render(request, 'user_center_order.html', context)
+
+
+class UserAdressView(LoginRequiredMixin, View):
+    """用户中心地址界面"""
+
+    def get(self, request):
+        context = {'which_page': 3}
+        return render(request, 'user_center_site.html', context)

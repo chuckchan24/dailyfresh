@@ -132,7 +132,6 @@ TINYMCE_DEFAULT_CONFIG = {
 # EMAIL_FROM = '天天生鲜<chuckfortest@163.com>'  # 收件人接收到邮件后，显示在‘发件人’中的内容，如下图
 
 
-
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # 导入邮件模块
 EMAIL_HOST = 'smtp.163.com'  # 邮箱服务器地址
 EMAIL_PORT = 25  # 邮箱服务器端口（163.com默认都为25,qq为465)
@@ -141,4 +140,6 @@ EMAIL_HOST_PASSWORD = 'python123'  # 邮箱客户端授权码，非邮箱登录�
 EMAIL_FROM = '天天生鲜<islet1010@163.com>'  # 收件人接收到邮件后，显示在‘发件人’中的内容，如下图
 
 
-
+# 配合@login_required使用,
+# 如果没有登录默认跳转到此url指定的界面
+LOGIN_URL = '/users/login'

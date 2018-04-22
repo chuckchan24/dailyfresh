@@ -17,5 +17,10 @@ urlpatterns = [
     # 注销类视图
     url(r'^logout$', views.LogoutView.as_view(), name='logout'),  # 用户登录
 
+    # 用户中心
+    url(r'^order$', views.UserOrderView.as_view(), name='order'),  # 用户中心订单界面
+    url(r'^address$', views.UserAdressView.as_view(), name='address'),  # 用户中心地址界面
+    url(r'^', views.UserInfoView.as_view(), name='info'),  # 用户中心主界面
 
 ]
+
